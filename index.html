@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1e2430">
+<title>Practice Kit</title>
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./shell/icon-192.png">
+<link rel="apple-touch-icon" href="./shell/icon-192.png">
+<style>
+  :root { --bar: #1e2430; --bar-fg: #c9d4e0; --accent: #78c8ff; --panel: #2a3340; --line: #3a4656; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: #000; color: #e8edf2;
+    font-family: -apple-system, "Segoe UI", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif; overflow: hidden; overscroll-behavior: none; }
+  body { display: flex; flex-direction: column; height: 100dvh; padding-bottom: env(safe-area-inset-bottom); }
+  #stage { flex: 1; position: relative; min-height: 0; }
+  .frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #fff; display: none; }
+  .frame.active { display: block; }
+  nav { display: flex; background: var(--bar); border-top: 1px solid var(--line); height: 56px; flex: 0 0 auto; }
+  nav button { flex: 1; background: none; border: 0; color: var(--bar-fg); font: inherit; font-size: 0.72rem; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+  nav button .ic { font-size: 1.25rem; line-height: 1; }
+  nav button.active { color: var(--accent); }
+  nav button.active .ic { transform: translateY(-1px); }
+  /* 設定シート */
+  #sheet { position: absolute; inset: 0; background: #141a22; overflow-y: auto; padding: 14px 14px 30px; display: none; }
+  #sheet.active { display: block; }
+  #sheet h1 { font-size: 1.1rem; margin: 0 0 12px; }
+  .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 14px; background: var(--panel); border-radius: 12px; margin-bottom: 8px; }
+  .row .l { display: flex; flex-direction: column; } .row .l .d { font-size: 0.75rem; opacity: 0.7; margin-top: 2px; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg button { background: var(--panel); color: #fff; border: 0; padding: 7px 12px; font: inherit; cursor: pointer; }
+  .seg button.on { background: var(--accent); color: #0b1620; font-weight: 700; }
+  .btn { background: var(--accent); color: #0b1620; border: 0; border-radius: 8px; padding: 8px 14px; font: inherit; font-weight: 700; cursor: pointer; }
+  .btn.ghost { background: #3a4656; color: #fff; }
+  .switch { position: relative; width: 46px; height: 26px; display: inline-block; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch .knob { position: absolute; inset: 0; background: #555; border-radius: 26px; transition: 0.2s; }
+  .switch .knob::before { content: ""; position: absolute; width: 20px; height: 20px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: 0.2s; }
+  .switch input:checked + .knob { background: var(--accent); }
+  .switch input:checked + .knob::before { transform: translateX(20px); }
+  .links a { color: var(--accent); text-decoration: none; font-weight: 700; }
+  .credit { font-size: 0.78rem; line-height: 1.8; opacity: 0.85; padding: 12px 14px; background: var(--panel); border-radius: 12px; margin-top: 16px; }
+  .credit a { color: var(--accent); word-break: break-all; }
+  #toast { position: fixed; left: 50%; bottom: 70px; transform: translateX(-50%); background: #fff; color: #000; padding: 10px 16px; border-radius: 10px; opacity: 0; transition: opacity 0.2s; pointer-events: none; z-index: 9; font-size: 0.9rem; max-width: 90vw; }
+  #toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <iframe class="frame" data-app="metronome" data-src="./metronome/NamaMeto.html" allow="microphone; autoplay; clipboard-read; clipboard-write" allowfullscreen></iframe>
+  <iframe class="frame" data-app="tuner" data-src="./tuner/" allow="microphone; autoplay" allowfullscreen></iframe>
+  <iframe class="frame" data-app="harmony" data-src="./harmony/" allow="autoplay" allowfullscreen></iframe>
+
+  <section id="sheet">
+    <h1 data-i18n="settings">設定</h1>
+    <div class="row"><div class="l"><span data-i18n="lang">言語 / Language</span><span class="d" data-i18n="lang_d">3つのアプリをまとめて切替</span></div>
+      <div class="seg" id="langSeg"><button data-lang="ja">日本語</button><button data-lang="en">English</button></div></div>
+    <div class="row"><div class="l"><span data-i18n="wake">スリープ防止</span><span class="d" id="wakeStatus"></span></div>
+      <label class="switch"><input type="checkbox" id="chkWake"><span class="knob"></span></label></div>
+    <div class="row"><div class="l"><span data-i18n="mute">切替時に音を止める</span><span class="d" data-i18n="mute_d">タブを移ったら前のアプリの音を停止</span></div>
+      <label class="switch"><input type="checkbox" id="chkMute"><span class="knob"></span></label></div>
+    <div class="row"><div class="l"><span data-i18n="install">アプリとしてインストール</span><span class="d" data-i18n="install_d">ホーム画面から起動・オフラインでも動作</span></div>
+      <button class="btn" id="btnInstall" data-i18n="install_b">インストール</button></div>
+    <div class="row"><div class="l"><span data-i18n="reload">強制リロード</span><span class="d" data-i18n="reload_d">キャッシュを消して最新版にする</span></div>
+      <button class="btn ghost" id="btnReload" data-i18n="reload_b">リロード</button></div>
+    <div class="row links"><div class="l"><span data-i18n="open_each">各アプリを単体で開く</span></div>
+      <span><a href="./metronome/NamaMeto.html" target="_blank" rel="noopener">NamaMeto</a> · <a href="./tuner/" target="_blank" rel="noopener">Tuner</a> · <a href="./harmony/" target="_blank" rel="noopener">Harmony</a></span></div>
+    <div class="credit">
+      <strong>Practice Kit</strong> © 2026 Kyohei Kobayashi — Tuner / Harmony Pad / この画面は自作です。<br>
+      <strong>メトロノーム「NamaMeto」</strong>は nama 様(Nama Studio)の作品を、作者が定める改造・再配布の条件に従ってそのまま収録しています。
+      原作: <a href="https://nama1223.com/NamaSoundPlus/?openExternalBrowser=1" target="_blank" rel="noopener">https://nama1223.com/NamaSoundPlus/</a>
+    </div>
+  </section>
+</div>
+<nav id="nav">
+  <button data-tab="metronome" class="active"><span class="ic">🎵</span><span data-i18n="metronome">メトロノーム</span></button>
+  <button data-tab="tuner"><span class="ic">🎯</span><span data-i18n="tuner">チューナー</span></button>
+  <button data-tab="harmony"><span class="ic">🎹</span><span data-i18n="harmony">ハーモニー</span></button>
+  <button data-tab="sheet"><span class="ic">⚙️</span><span data-i18n="settings">設定</span></button>
+</nav>
+<div id="toast"></div>
+<script>
+const I18N = {
+  ja: { settings: '設定', lang: '言語 / Language', lang_d: '3つのアプリをまとめて切替', wake: 'スリープ防止', mute: '切替時に音を止める', mute_d: 'タブを移ったら前のアプリの音を停止',
+        install: 'アプリとしてインストール', install_d: 'ホーム画面から起動・オフラインでも動作', install_b: 'インストール', reload: '強制リロード', reload_d: 'キャッシュを消して最新版にする', reload_b: 'リロード',
+        open_each: '各アプリを単体で開く', metronome: 'メトロノーム', tuner: 'チューナー', harmony: 'ハーモニー', wake_on: '有効', wake_off: '無効', wake_na: '非対応のブラウザ',
+        installed: 'インストール済みです', ios: 'Safari の共有ボタン → 「ホーム画面に追加」', other: 'ブラウザのメニューから「アプリをインストール」' },
+  en: { settings: 'Settings', lang: 'Language', lang_d: 'Applies to all three apps', wake: 'Keep awake', mute: 'Mute on switch', mute_d: 'Stop the previous app when switching tabs',
+        install: 'Install as app', install_d: 'Launch from home screen, works offline', install_b: 'Install', reload: 'Force reload', reload_d: 'Clear cache and update', reload_b: 'Reload',
+        open_each: 'Open each app alone', metronome: 'Metronome', tuner: 'Tuner', harmony: 'Harmony', wake_on: 'On', wake_off: 'Off', wake_na: 'Unsupported',
+        installed: 'Already installed', ios: 'Safari: Share → "Add to Home Screen"', other: 'Browser menu → "Install app"' },
+};
+const LS = 'pk_shell_';
+const st = {
+  lang: localStorage.getItem(LS + 'lang') || (navigator.language.startsWith('ja') ? 'ja' : 'en'),
+  wake: localStorage.getItem(LS + 'wake') === '1',
+  mute: localStorage.getItem(LS + 'mute') !== '0',
+  tab: localStorage.getItem(LS + 'tab') || 'metronome',
+};
+const t = k => I18N[st.lang][k] ?? k;
+const $ = id => document.getElementById(id);
+const frames = [...document.querySelectorAll('.frame')];
+
+function post(f, msg) { try { f.contentWindow && f.contentWindow.postMessage(msg, location.origin); } catch {} }
+function syncChild(f) { post(f, { type: 'setLanguage', lang: st.lang }); post(f, { type: 'setWakeLock', enabled: st.wake }); }
+frames.forEach(f => f.addEventListener('load', () => syncChild(f)));
+window.addEventListener('message', e => {
+  if (e.origin !== location.origin) return;
+  if (e.data && e.data.type === 'childReady') { const f = frames.find(x => x.contentWindow === e.source); if (f) syncChild(f); }
+});
+
+function show(tab) {
+  st.tab = tab; localStorage.setItem(LS + 'tab', tab);
+  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  $('sheet').classList.toggle('active', tab === 'sheet');
+  frames.forEach(f => {
+    const on = f.dataset.app === tab;
+    if (on && !f.src) f.src = f.dataset.src;       // 初めて開いたときだけ読み込む
+    f.classList.toggle('active', on);
+    if (!on && st.mute && f.src) post(f, { type: 'pauseAll' });
+  });
+}
+$('nav').onclick = e => { const b = e.target.closest('button'); if (b) show(b.dataset.tab); };
+
+function applyI18n() {
+  document.documentElement.lang = st.lang;
+  document.querySelectorAll('[data-i18n]').forEach(el => el.textContent = t(el.dataset.i18n));
+  $('langSeg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.lang === st.lang));
+  updateWake();
+}
+$('langSeg').onclick = e => { const b = e.target.closest('button'); if (!b) return; st.lang = b.dataset.lang; localStorage.setItem(LS + 'lang', st.lang); applyI18n(); frames.forEach(f => f.src && post(f, { type: 'setLanguage', lang: st.lang })); };
+
+let wakeLock = null;
+async function setWake(on) {
+  st.wake = on; localStorage.setItem(LS + 'wake', on ? '1' : '0'); $('chkWake').checked = on;
+  if ('wakeLock' in navigator) {
+    try {
+      if (on && !wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; updateWake(); }); }
+      else if (!on && wakeLock) { await wakeLock.release(); wakeLock = null; }
+    } catch {}
+  }
+  updateWake();
+  frames.forEach(f => f.src && post(f, { type: 'setWakeLock', enabled: on }));
+}
+function updateWake() { $('wakeStatus').textContent = !('wakeLock' in navigator) ? t('wake_na') : (wakeLock ? t('wake_on') : t('wake_off')); }
+$('chkWake').onchange = e => setWake(e.target.checked);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && st.wake && !wakeLock) setWake(true); });
+$('chkMute').checked = st.mute;
+$('chkMute').onchange = e => { st.mute = e.target.checked; localStorage.setItem(LS + 'mute', st.mute ? '1' : '0'); };
+
+let installPrompt = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installPrompt = e; });
+$('btnInstall').onclick = async () => {
+  if (matchMedia('(display-mode: standalone)').matches || navigator.standalone === true) return toast(t('installed'));
+  if (installPrompt) { installPrompt.prompt(); await installPrompt.userChoice; installPrompt = null; return; }
+  toast(/iphone|ipad|ipod/i.test(navigator.userAgent) ? t('ios') : t('other'), 4000);
+};
+$('btnReload').onclick = async () => {
+  try {
+    if ('caches' in window) for (const k of await caches.keys()) await caches.delete(k);
+    if ('serviceWorker' in navigator) for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister();
+  } catch {}
+  location.reload();
+};
+let toastTimer;
+function toast(msg, ms = 2000) { const el = $('toast'); el.textContent = msg; el.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), ms); }
+
+applyI18n();
+$('chkWake').checked = st.wake;
+show(st.tab);
+if (st.wake) setWake(true);
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
+</script>
+</body>
+</html>

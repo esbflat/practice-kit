@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1f5f8f">
+<title>Harmony Pad</title>
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<header id="top">
+  <button id="btnSettings" class="icon" aria-label="settings">⚙</button>
+  <div class="seg" id="modeSeg">
+    <button data-mode="keys" class="on" data-i18n="mode_keys">鍵盤</button>
+    <button data-mode="chords" data-i18n="mode_chords">コード</button>
+  </div>
+  <div id="chordName" class="chord-name">—</div>
+  <button id="btnLatch" class="toggle" data-i18n="latch">持続</button>
+  <button id="btnPanic" class="icon" title="stop all">■</button>
+</header>
+
+<main>
+  <section id="chordPanel" hidden>
+    <div class="row">
+      <label><span data-i18n="key">調</span> <select id="selKey"></select></label>
+      <div class="seg" id="scaleSeg">
+        <button data-scale="major" class="on">Major</button>
+        <button data-scale="minor">minor</button>
+      </div>
+      <label class="chk"><input type="checkbox" id="chkSeventh"> 7th</label>
+      <label class="chk"><input type="checkbox" id="chkHarmonic"> <span data-i18n="harmonic_minor">和声的短音階</span></label>
+      <label class="chk"><input type="checkbox" id="chkBass"> <span data-i18n="bass">ベース音</span></label>
+    </div>
+    <div id="chordGrid" class="chord-grid"></div>
+
+    <div class="block">
+      <div class="row">
+        <strong data-i18n="progression">コード進行</strong>
+        <select id="selPreset"></select>
+        <button id="btnProgRecord" class="toggle" data-i18n="prog_add">タップで追加</button>
+        <button id="btnProgClear" data-i18n="clear">クリア</button>
+      </div>
+      <div id="progStrip" class="prog-strip"><span class="muted" data-i18n="prog_empty">プリセットを選ぶか「タップで追加」をオンにしてコードを押してください</span></div>
+      <div class="row">
+        <button id="btnProgPlay" class="primary">▶ <span data-i18n="play">再生</span></button>
+        <label>BPM <input type="number" id="inpBpm" min="40" max="200" value="80"></label>
+        <label><span data-i18n="beats">拍/コード</span> <input type="number" id="inpBeats" min="1" max="8" value="4"></label>
+        <label class="chk"><input type="checkbox" id="chkLoop" checked> <span data-i18n="loop">ループ</span></label>
+      </div>
+    </div>
+
+    <div class="block">
+      <div class="row">
+        <strong data-i18n="quiz">聴き取りクイズ</strong>
+        <button id="btnQuizStart" data-i18n="quiz_start">出題</button>
+        <button id="btnQuizReplay" data-i18n="quiz_replay">もう一度聴く</button>
+        <span id="quizStatus"></span>
+        <span id="quizScore" class="muted"></span>
+      </div>
+      <div class="muted small" data-i18n="quiz_help">出題されたコードを聴いて、上のコードボタンから答えを選びます。</div>
+    </div>
+  </section>
+
+  <section id="kbSection">
+    <div class="row kb-ctl">
+      <button id="btnOctDown">◀ Oct</button>
+      <span id="octLabel"></span>
+      <button id="btnOctUp">Oct ▶</button>
+      <span id="transLabel" class="muted small"></span>
+    </div>
+    <div id="piano"></div>
+  </section>
+</main>
+
+<div id="scrim"></div>
+<aside id="drawer">
+  <div class="drawer-head">
+    <strong data-i18n="settings">設定</strong>
+    <button id="btnCloseDrawer" class="icon">✕</button>
+  </div>
+
+  <div class="srow"><span data-i18n="language">言語 / Language</span>
+    <div class="seg" id="langSeg"><button data-lang="ja">日本語</button><button data-lang="en">English</button></div></div>
+
+  <div class="srow"><span data-i18n="tone">音色</span><select id="selTone"></select></div>
+  <div class="srow"><span data-i18n="volume">音量</span><input type="range" id="inpVolume" min="0" max="100"></div>
+  <div class="srow"><span data-i18n="concert_pitch">基準ピッチ A4</span>
+    <span><input type="number" id="inpA4" min="430" max="450" step="1"> Hz</span></div>
+
+  <div class="srow col"><span data-i18n="temperament">音律</span>
+    <div class="seg" id="tempSeg">
+      <button data-temp="equal" data-i18n="temp_equal">平均律</button>
+      <button data-temp="justChord" data-i18n="temp_just_chord">純正律(コード根音)</button>
+      <button data-temp="justKey" data-i18n="temp_just_key">純正律(調の主音)</button>
+    </div>
+    <label id="justRootRow"><span data-i18n="just_root">主音</span> <select id="selJustRoot"></select></label></div>
+
+  <div class="srow"><span data-i18n="instrument_key">楽器の調(記譜)</span><select id="selTranspose"></select></div>
+  <div class="srow"><span data-i18n="visible_octaves">鍵盤の幅</span>
+    <div class="seg" id="octSeg"><button data-oct="1">1 oct</button><button data-oct="2">2 oct</button><button data-oct="3">3 oct</button></div></div>
+  <div class="srow"><span data-i18n="theme">テーマ</span>
+    <div class="seg" id="themeSeg"><button data-theme="light" data-i18n="theme_light">明</button><button data-theme="dark" data-i18n="theme_dark">暗</button></div></div>
+  <div class="srow"><span><span data-i18n="wake_lock">スリープ防止</span> <span id="wakeStatus" class="muted small"></span></span>
+    <label class="switch"><input type="checkbox" id="chkWake"><span class="knob"></span></label></div>
+  <div class="srow"><span data-i18n="install">アプリとしてインストール</span><button id="btnInstall" data-i18n="install_btn">インストール</button></div>
+  <div class="srow"><span data-i18n="reset">設定を初期化</span><button id="btnReset" data-i18n="reset_btn">初期化</button></div>
+
+  <div class="credits">Harmony Pad © 2026 Kyohei Kobayashi<br><span data-i18n="credits_note">音声ファイルを使わず Web Audio API で合成しています。</span></div>
+</aside>
+
+<div id="toast"></div>
+<script type="module" src="./app.js"></script>
+</body>
+</html>

@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="light" data-accent="teal">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pocket Tuner</title>
+<meta name="description" content="Chromatic tuner with pitch recording and intonation check">
+<meta name="theme-color" content="#0f766e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <img src="./icon.svg" alt="" class="brand-icon">
+    <span data-i18n="app.title">Pocket Tuner</span>
+  </div>
+  <nav class="tabs" role="tablist">
+    <button type="button" class="tab is-active" role="tab" data-tab="tuner" data-i18n="tab.tuner">チューナー</button>
+    <button type="button" class="tab" role="tab" data-tab="record" data-i18n="tab.record">記録</button>
+    <button type="button" class="tab" role="tab" data-tab="check" data-i18n="tab.check">音程チェック</button>
+    <button type="button" class="tab" role="tab" data-tab="settings" data-i18n="tab.settings">設定</button>
+  </nav>
+</header>
+
+<main class="content">
+
+<!-- ========== 1. チューナー ========== -->
+<section id="panel-tuner" class="panel is-active" role="tabpanel">
+  <div class="mic-row">
+    <button type="button" id="micBtn" class="btn btn-primary" data-i18n="mic.start">マイクを開始</button>
+    <span id="micStatus" class="status" data-i18n="mic.idle">停止中</span>
+  </div>
+
+  <div class="meter-wrap">
+    <canvas id="meterCanvas" class="meter" width="400" height="220"></canvas>
+    <div class="readout">
+      <div id="noteName" class="note-name">--</div>
+      <div class="readout-sub">
+        <span id="centsText" class="cents">--</span>
+        <span id="hzText" class="hz">-- Hz</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <label class="field">
+      <span data-i18n="tuner.a4">基準ピッチ A4</span>
+      <span class="stepper">
+        <button type="button" class="btn btn-sm" id="a4Minus" aria-label="-1 Hz">−</button>
+        <input type="number" id="a4Input" min="430" max="450" step="1" value="442" inputmode="numeric">
+        <button type="button" class="btn btn-sm" id="a4Plus" aria-label="+1 Hz">+</button>
+      </span>
+    </label>
+    <label class="field">
+      <span data-i18n="tuner.tolerance">許容範囲</span>
+      <select id="toleranceSelect"></select>
+    </label>
+    <label class="field">
+      <span data-i18n="tuner.transpose">表示移調</span>
+      <select id="transposeSelect">
+        <option value="C">in C</option>
+        <option value="Bb">in B♭</option>
+        <option value="Eb">in E♭</option>
+        <option value="F">in F</option>
+      </select>
+    </label>
+    <label class="field">
+      <span data-i18n="tuner.notation">音名表記</span>
+      <select id="notationSelect">
+        <option value="en" data-i18n="notation.en">英語 (C D E)</option>
+        <option value="solfege" data-i18n="notation.solfege">ドレミ</option>
+        <option value="de" data-i18n="notation.de">ドイツ音名</option>
+      </select>
+    </label>
+  </div>
+
+  <div class="card">
+    <div class="card-title" data-i18n="tuner.refTone">基準音</div>
+    <div class="row">
+      <select id="refNote" aria-label="note"></select>
+      <select id="refOctave" aria-label="octave">
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4" selected>4</option>
+        <option value="5">5</option>
+        <option value="6">6</option>
+      </select>
+      <button type="button" id="refBtn" class="btn" data-i18n="tuner.refPlay">鳴らす</button>
+    </div>
+    <div class="hint" id="refHint"></div>
+  </div>
+
+  <div class="toggles">
+    <label class="toggle">
+      <input type="checkbox" id="echoToggle">
+      <span data-i18n="tuner.echo">返音(検出した音を鳴り返す)</span>
+    </label>
+    <label class="toggle">
+      <input type="checkbox" id="fullColorToggle">
+      <span data-i18n="tuner.fullColor">全面色(合えば緑・低いと青・高いと赤)</span>
+    </label>
+  </div>
+</section>
+
+<!-- ========== 2. 記録 ========== -->
+<section id="panel-record" class="panel" role="tabpanel">
+  <div class="row wrap">
+    <button type="button" id="recBtn" class="btn btn-danger" data-i18n="rec.start">録音</button>
+    <button type="button" id="playBtn" class="btn" data-i18n="rec.play" disabled>再生</button>
+    <button type="button" id="rewindBtn" class="btn" data-i18n="rec.rewind" disabled>先頭へ</button>
+    <button type="button" id="zoomOutBtn" class="btn btn-icon" aria-label="zoom out">−</button>
+    <button type="button" id="zoomInBtn" class="btn btn-icon" aria-label="zoom in">+</button>
+  </div>
+  <div class="status-row">
+    <span id="recTime" class="mono">0.0 s</span>
+    <span id="recReadout" class="mono"></span>
+  </div>
+  <canvas id="recCanvas" class="graph" width="400" height="220"></canvas>
+  <p class="hint" data-i18n="rec.hint">グラフをなぞると、その時点の音が鳴ります。</p>
+
+  <div class="card">
+    <div class="row">
+      <input type="text" id="recName" data-i18n-ph="rec.namePh" placeholder="名前">
+      <button type="button" id="recSaveBtn" class="btn btn-primary" data-i18n="common.save" disabled>保存</button>
+    </div>
+    <ul id="recList" class="list"></ul>
+  </div>
+</section>
+
+<!-- ========== 3. 音程チェック ========== -->
+<section id="panel-check" class="panel" role="tabpanel">
+  <div class="check-head">
+    <div id="chkTarget" class="note-name">--</div>
+    <div class="readout-sub">
+      <span id="chkProgress" class="mono"></span>
+      <span id="chkLive" class="cents"></span>
+    </div>
+    <div id="chkMsg" class="hint" data-i18n="chk.ready">「開始」を押して、表示された音を吹いてください。</div>
+  </div>
+  <div class="row wrap">
+    <button type="button" id="chkStartBtn" class="btn btn-primary" data-i18n="chk.start">開始</button>
+    <button type="button" id="chkNextBtn" class="btn" data-i18n="chk.next" disabled>次の音へ</button>
+    <button type="button" id="chkFinishBtn" class="btn" data-i18n="chk.finish" disabled>終了</button>
+  </div>
+  <label class="toggle">
+    <input type="checkbox" id="chkAutoToggle" checked>
+    <span data-i18n="chk.auto">安定したら自動で次の音へ</span>
+  </label>
+  <p class="hint" id="chkRangeInfo"></p>
+
+  <div id="chkResult" class="card hidden">
+    <div class="card-title" data-i18n="chk.result">結果</div>
+    <canvas id="chkCanvas" class="graph" width="400" height="220"></canvas>
+    <div class="table-wrap">
+      <table id="chkTable" class="table"></table>
+    </div>
+    <div class="row">
+      <input type="text" id="chkPlayer" data-i18n-ph="chk.playerPh" placeholder="奏者名">
+      <input type="text" id="chkInstrLabel" data-i18n-ph="chk.instrPh" placeholder="楽器名">
+      <button type="button" id="chkSaveBtn" class="btn btn-primary" data-i18n="common.save">保存</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title" data-i18n="chk.saved">保存したデータ</div>
+    <ul id="chkList" class="list"></ul>
+    <div class="row wrap">
+      <select id="cmpA" aria-label="A"></select>
+      <select id="cmpB" aria-label="B"></select>
+      <button type="button" id="cmpBtn" class="btn" data-i18n="chk.compare">比較</button>
+    </div>
+    <div class="row wrap">
+      <button type="button" id="chkExportBtn" class="btn" data-i18n="chk.export">JSON 出力</button>
+      <label class="btn file-btn"><span data-i18n="chk.import">JSON 読込</span><input type="file" id="chkImport" accept="application/json,.json" hidden></label>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 4. 設定 ========== -->
+<section id="panel-settings" class="panel" role="tabpanel">
+
+  <div class="card">
+    <div class="card-title" data-i18n="set.instrument">楽器</div>
+    <div class="grid-2">
+      <label class="field"><span data-i18n="set.family">ファミリー</span><select id="familySelect"></select></label>
+      <label class="field"><span data-i18n="set.instrumentName">楽器名</span><select id="instrumentSelect"></select></label>
+      <label class="field"><span data-i18n="set.level">音域の広さ</span>
+        <select id="levelSelect">
+          <option value="easy" data-i18n="level.easy">初級(狭い)</option>
+          <option value="mid" data-i18n="level.mid">中級</option>
+          <option value="adv" data-i18n="level.adv">上級(広い)</option>
+        </select>
+      </label>
+    </div>
+    <p class="hint" id="instrumentInfo"></p>
+  </div>
+
+  <div class="card">
+    <div class="card-title" data-i18n="set.pitch">ピッチ</div>
+    <div class="grid-2">
+      <label class="field"><span data-i18n="tuner.a4">基準ピッチ A4</span><input type="number" id="setA4" min="430" max="450" step="1" inputmode="numeric"></label>
+      <label class="field"><span data-i18n="tuner.tolerance">許容範囲</span><select id="setTolerance"></select></label>
+      <label class="field"><span data-i18n="tuner.notation">音名表記</span>
+        <select id="setNotation">
+          <option value="en" data-i18n="notation.en">英語 (C D E)</option>
+          <option value="solfege" data-i18n="notation.solfege">ドレミ</option>
+          <option value="de" data-i18n="notation.de">ドイツ音名</option>
+        </select>
+      </label>
+      <label class="field"><span data-i18n="tuner.transpose">表示移調</span>
+        <select id="setTranspose">
+          <option value="C">in C</option>
+          <option value="Bb">in B♭</option>
+          <option value="Eb">in E♭</option>
+          <option value="F">in F</option>
+        </select>
+      </label>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title" data-i18n="set.mic">マイク</div>
+    <div class="row">
+      <select id="micSelect" class="grow"></select>
+      <button type="button" id="micRefreshBtn" class="btn" data-i18n="set.refresh">更新</button>
+    </div>
+    <div class="grid-2">
+      <label class="field"><span data-i18n="set.minRms">最小音量(RMS)</span>
+        <input type="range" id="setMinRms" min="0.001" max="0.1" step="0.001"><span id="setMinRmsVal" class="mono"></span></label>
+      <label class="field"><span data-i18n="set.clarity">クラリティ閾値(YIN)</span>
+        <input type="range" id="setYin" min="0.05" max="0.4" step="0.01"><span id="setYinVal" class="mono"></span></label>
+    </div>
+    <div class="row">
+      <button type="button" id="calibBtn" class="btn" data-i18n="set.calib">感度を自動調整</button>
+      <span id="calibStatus" class="status"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title" data-i18n="set.appearance">表示</div>
+    <div class="grid-2">
+      <label class="field"><span data-i18n="set.theme">テーマ</span>
+        <select id="setTheme">
+          <option value="light" data-i18n="theme.light">明</option>
+          <option value="dark" data-i18n="theme.dark">暗</option>
+        </select>
+      </label>
+      <label class="field"><span data-i18n="set.accent">アクセント色</span>
+        <select id="setAccent">
+          <option value="teal" data-i18n="accent.teal">青緑</option>
+          <option value="amber" data-i18n="accent.amber">琥珀</option>
+          <option value="violet" data-i18n="accent.violet">紫</option>
+        </select>
+      </label>
+      <label class="field"><span data-i18n="set.lang">言語 / Language</span>
+        <select id="setLang">
+          <option value="ja">日本語</option>
+          <option value="en">English</option>
+        </select>
+      </label>
+    </div>
+    <label class="toggle">
+      <input type="checkbox" id="setWakeLock">
+      <span data-i18n="set.wakeLock">スリープ防止(画面を消さない)</span>
+    </label>
+    <p class="hint" id="wakeLockInfo"></p>
+  </div>
+
+  <div class="card">
+    <div class="card-title" data-i18n="set.external">外部機器</div>
+    <div class="row">
+      <button type="button" id="midiLearnBtn" class="btn" data-i18n="set.midiLearn">MIDI ノートを割当</button>
+      <span id="midiStatus" class="status"></span>
+    </div>
+    <div class="row">
+      <label class="field grow"><span data-i18n="set.key">録音開始/停止のキー</span>
+        <input type="text" id="setKey" maxlength="1" data-i18n-ph="set.keyPh" placeholder="例: r"></label>
+      <button type="button" id="keyClearBtn" class="btn" data-i18n="common.clear">解除</button>
+    </div>
+    <p class="hint" data-i18n="set.externalHint">割り当てた MIDI ノートまたはキーで、記録タブの録音を開始・停止できます。</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title" data-i18n="set.install">アプリとしてインストール</div>
+    <button type="button" id="installBtn" class="btn btn-primary hidden" data-i18n="set.installBtn">ホーム画面に追加</button>
+    <p class="hint" id="installInfo"></p>
+  </div>
+
+  <div class="card">
+    <div class="card-title" data-i18n="set.data">データ管理</div>
+    <div class="row wrap">
+      <button type="button" id="dataExportBtn" class="btn" data-i18n="set.dataExport">全データを出力</button>
+      <label class="btn file-btn"><span data-i18n="set.dataImport">読み込み</span><input type="file" id="dataImport" accept="application/json,.json" hidden></label>
+      <button type="button" id="dataClearBtn" class="btn btn-danger" data-i18n="set.dataClear">全消去</button>
+    </div>
+  </div>
+
+</section>
+</main>
+
+<footer class="foot">© 2026 Kyohei Kobayashi</footer>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>

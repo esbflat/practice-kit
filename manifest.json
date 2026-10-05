@@ -1,0 +1,13 @@
+{
+  "name": "Practice Kit",
+  "short_name": "PracticeKit",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#1e2430",
+  "icons": [
+    { "src": "shell/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "shell/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
