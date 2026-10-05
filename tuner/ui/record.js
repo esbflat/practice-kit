@@ -32,6 +32,7 @@ export function initRecord() {
   let playT0 = 0;
   let playFrom = 0;
   let scrubbing = false;
+  let noticeUntil = 0; // 一時メッセージ(マイク未開始など)を表示しておく期限
 
   const duration = () => (samples.length ? samples[samples.length - 1].t : 0);
   const pxPerSec = () => ZOOMS[zoomIdx];
@@ -42,7 +43,11 @@ export function initRecord() {
     if (playing) stopPlay();
     if (!mic.on) {
       const ok = await startMic();
-      if (!ok) { recReadout.textContent = t('rec.needMic'); return; }
+      if (!ok) {
+        recReadout.textContent = mic.error || t('rec.needMic');
+        noticeUntil = performance.now() / 1000 + 4;
+        return;
+      }
     }
     samples = [];
     a4AtRec = settings.a4;
@@ -201,7 +206,7 @@ export function initRecord() {
       }
     }
     recTime.textContent = cursor.toFixed(1) + ' s';
-    if (!recording) {
+    if (!recording && now >= noticeUntil) {
       const s = sampleAt(cursor);
       recReadout.textContent = s && s.c != null
         ? `${noteLabel(s.m, { notation: settings.notation, transpose: settings.transpose })} ${s.c > 0 ? '+' : ''}${s.c.toFixed(0)} ¢ ${s.f.toFixed(1)} Hz`
