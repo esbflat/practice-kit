@@ -79,7 +79,7 @@ export class Synth {
     env.gain.linearRampToValueAtTime(this.tone.level, t + this.tone.attack);
     const osc = ctx.createOscillator();
     osc.setPeriodicWave(this.wave);
-    osc.frequency.setValueAtTime(freq, t);
+    osc.frequency.value = freq;
     osc.connect(env).connect(this.master);
     osc.start(t);
     this.voices.set(id, { osc, env });
