@@ -35,6 +35,7 @@ label.chk { display: inline-flex; align-items: center; gap: 4px; }
 
 main { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 #chordPanel { padding: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+#chordPanel[hidden] { display: none; }
 .block { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
 
 .chord-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
