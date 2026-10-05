@@ -1,5 +1,5 @@
 // Practice Kit shell service worker: シェル自身の静的ファイルだけを扱う(子アプリは各自の SW)
-const CACHE = 'practice-kit-shell-v1';
+const CACHE = 'practice-kit-shell-v2';
 const FILES = ['./manifest.json', './shell/icon-192.png', './shell/icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES))); self.skipWaiting(); });
 self.addEventListener('activate', e => {

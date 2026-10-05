@@ -1,5 +1,5 @@
 // Service Worker: 自ファイルを precache し、ネットワーク優先・失敗時はキャッシュ
-const CACHE = 'pk-tuner-v1';
+const CACHE = 'pk-tuner-v2';
 const FILES = [
   './',
   './index.html',

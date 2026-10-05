@@ -113,6 +113,22 @@ export function diatonicChords(keyPc, mode = 'major', seventh = false) {
 }
 
 /**
+ * 調の第 deg 度を根音に、指定したコード種で作る(丸サ進行のような非ダイアトニック用)
+ */
+export function chordFromDegree(keyPc, mode, deg, typeId) {
+  const scale = SCALES[mode];
+  const type = TYPE_BY_ID[typeId];
+  const rootPc = mod12(keyPc + scale[deg]);
+  const flats = useFlats(keyPc, mode === 'major' ? 'major' : 'minor');
+  return {
+    degree: deg, rootPc, type,
+    pcs: type.intervals.map(i => mod12(rootPc + i)),
+    name: pcName(rootPc, { flats }) + type.symbol,
+    roman: romanLabel(deg, type, type.intervals.length >= 4),
+  };
+}
+
+/**
  * 鳴っている MIDI ノート集合からコードを推定する
  * 返り値: { rootPc, type, name, bassPc } または null
  */

@@ -1,6 +1,6 @@
 // Harmony Pad — 鍵盤 + ダイアトニックコード学習モード
 // © 2026 Kyohei Kobayashi
-import { PC_SHARP, mod12, pcName, useFlats, equalFreq, justFreq, diatonicChords, detectChord, voiceChord, SCALES } from './theory.js';
+import { PC_SHARP, mod12, pcName, useFlats, equalFreq, justFreq, diatonicChords, chordFromDegree, detectChord, voiceChord, SCALES } from './theory.js';
 import { Synth, TONES } from './synth.js';
 
 // ---------------- i18n ----------------
@@ -19,7 +19,7 @@ const I18N = {
     install_other: 'ブラウザのメニューから「アプリをインストール」を選んでください',
     reset: '設定を初期化', reset_btn: '初期化', reset_done: '初期化しました', credits_note: '音声ファイルを使わず Web Audio API で合成しています。',
     preset_custom: '（手動）', written: '記譜', concert: '実音',
-    presets: ['ポップス定番 I–V–vi–IV', '50年代 I–vi–IV–V', 'ツーファイブ ii–V–I', '三和音の基本 I–IV–V–I', '王道進行 IV–V–iii–vi', '小室進行 vi–IV–V–I', 'カノン進行', '循環 I–vi–ii–V', '下降 vi–V–IV–III(短調向き)'],
+    presets: ['ポップス定番 I–V–vi–IV', '50年代 I–vi–IV–V', 'ツーファイブ ii–V–I', '三和音の基本 I–IV–V–I', '王道進行 IV–V–iii–vi', '小室進行 vi–IV–V–I', 'カノン進行', '循環 I–vi–ii–V', '下降 vi–V–IV–III(短調向き)', '丸サ進行 IVmaj7–III7–vi7–I7'],
   },
   en: {
     mode_keys: 'Keys', mode_chords: 'Chords', latch: 'Hold', key: 'Key', harmonic_minor: 'Harmonic minor', bass: 'Bass',
@@ -34,10 +34,13 @@ const I18N = {
     installed: 'Already installed', install_ios: 'Safari: Share → "Add to Home Screen"', install_other: 'Use the browser menu → "Install app"',
     reset: 'Reset settings', reset_btn: 'Reset', reset_done: 'Settings reset', credits_note: 'All sounds are synthesized with the Web Audio API; no audio files.',
     preset_custom: '(custom)', written: 'written', concert: 'concert',
-    presets: ['Pop I–V–vi–IV', '50s I–vi–IV–V', 'ii–V–I', 'Triads I–IV–V–I', 'IV–V–iii–vi', 'vi–IV–V–I', 'Canon', 'Turnaround I–vi–ii–V', 'Descending vi–V–IV–III'],
+    presets: ['Pop I–V–vi–IV', '50s I–vi–IV–V', 'ii–V–I', 'Triads I–IV–V–I', 'IV–V–iii–vi', 'vi–IV–V–I', 'Canon', 'Turnaround I–vi–ii–V', 'Descending vi–V–IV–III', 'Just the Two of Us IVmaj7–III7–vi7–I7'],
   },
 };
-const PRESETS = [[0, 4, 5, 3], [0, 5, 3, 4], [1, 4, 0], [0, 3, 4, 0], [3, 4, 2, 5], [5, 3, 4, 0], [0, 4, 5, 2, 3, 0, 3, 4], [0, 5, 1, 4], [5, 4, 3, 2]];
+// 進行の要素: 度数(数値)= その調のダイアトニックコード / {deg, type} = 度数を根音に指定したコード種(非ダイアトニック)
+const PRESETS = [[0, 4, 5, 3], [0, 5, 3, 4], [1, 4, 0], [0, 3, 4, 0], [3, 4, 2, 5], [5, 3, 4, 0], [0, 4, 5, 2, 3, 0, 3, 4], [0, 5, 1, 4], [5, 4, 3, 2],
+  [{ deg: 3, type: 'maj7' }, { deg: 2, type: 'dom7' }, { deg: 5, type: 'min7' }, { deg: 0, type: 'dom7' }]];
+const degOf = e => (typeof e === 'number' ? e : e.deg);
 const TRANSPOSITIONS = [
   { id: 'C', label: 'in C', offset: 0 }, { id: 'Bb', label: 'in B♭ (Tp, Cl, Euph TC)', offset: -2 },
   { id: 'Eb', label: 'in E♭ (Eb Cl)', offset: 3 }, { id: 'EbAlto', label: 'in E♭ (Alto Sax)', offset: -9 },
@@ -179,9 +182,14 @@ let progression = [];      // 度数の配列
 let progTimer = null, progIndex = -1, progIds = [];
 let quiz = { answer: null, correct: 0, total: 0, waiting: false };
 
+const currentScaleName = () => (state.scale === 'minor' && state.harmonic ? 'harmonicMinor' : state.scale);
 function currentChords() {
-  const scale = state.scale === 'minor' && state.harmonic ? 'harmonicMinor' : state.scale;
-  return diatonicChords(state.keyPc, scale, state.seventh);
+  return diatonicChords(state.keyPc, currentScaleName(), state.seventh);
+}
+// 進行の要素からコードオブジェクトを得る
+function chordAt(entry) {
+  if (typeof entry === 'number') return chords[entry];
+  return entry.type ? chordFromDegree(state.keyPc, currentScaleName(), entry.deg, entry.type) : chords[entry.deg];
 }
 function chordVoicing(ch) {
   return voiceChord(ch.rootPc, ch.type.intervals, { rootOctave: 3, bass: state.bass });
@@ -245,7 +253,7 @@ function buildPresetSelect() {
   const o0 = document.createElement('option'); o0.value = ''; o0.textContent = t('preset_custom'); sel.appendChild(o0);
   t('presets').forEach((name, i) => {
     const o = document.createElement('option'); o.value = i;
-    o.textContent = name + '  (' + PRESETS[i].map(d => chords[d].roman).join('–') + ')';
+    o.textContent = name + '  (' + PRESETS[i].map(d => chordAt(d).roman).join('–') + ')';
     sel.appendChild(o);
   });
   sel.value = prev;
@@ -253,12 +261,13 @@ function buildPresetSelect() {
 function renderProgression() {
   const strip = $('progStrip'); strip.innerHTML = '';
   if (!progression.length) { strip.innerHTML = `<span class="muted">${t('prog_empty')}</span>`; return; }
-  progression.forEach((deg, i) => {
+  progression.forEach((entry, i) => {
+    const ch = chordAt(entry);
     const c = document.createElement('span'); c.className = 'chip' + (i === progIndex ? ' cur' : '');
-    c.innerHTML = `${chords[deg].roman} <small>${chords[deg].name}</small><span class="x">✕</span>`;
+    c.innerHTML = `${ch.roman} <small>${ch.name}</small><span class="x">✕</span>`;
     c.onclick = e => {
       if (e.target.classList.contains('x')) { progression.splice(i, 1); $('selPreset').value = ''; renderProgression(); return; }
-      stopProgression(); chordOn(chords[deg], 'c'); setTimeout(() => { if (!state.latch) { chordOff('c'); highlightChordKeys([]); } }, 700);
+      stopProgression(); chordOn(ch, 'c'); setTimeout(() => { if (!state.latch) { chordOff('c'); highlightChordKeys([]); } }, 700);
     };
     strip.appendChild(c);
   });
@@ -274,10 +283,11 @@ function playProgression() {
       if (!state.loop) { stopProgression(); return; }
       progIndex = 0;
     }
-    const ch = chords[progression[progIndex]];
+    const entry = progression[progIndex];
+    const ch = chordAt(entry);
     chordOn(ch, 'p', 0.008);
     renderProgression();
-    $('chordGrid').querySelectorAll('.chord-btn').forEach(x => x.classList.toggle('cur', +x.dataset.deg === progression[progIndex]));
+    $('chordGrid').querySelectorAll('.chord-btn').forEach(x => x.classList.toggle('cur', +x.dataset.deg === degOf(entry)));
     const ms = state.beats * 60000 / state.bpm;
     progTimer = setTimeout(() => { chordOff('p'); progTimer = setTimeout(step, 40); }, ms - 40);
   };

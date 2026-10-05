@@ -201,3 +201,8 @@ input[type="checkbox"] { width: 22px; height: 22px; accent-color: var(--accent);
   .note-name { font-size: 52px; }
   .tab { font-size: 13px; }
 }
+
+/* スマホで長押し・ドラッグしても文字選択やコピーメニューが出ないようにする(入力欄は除く) */
+body, button, select, label, .key, .chord-btn, .chip, nav { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+input[type="text"], input[type="number"], textarea { -webkit-user-select: text; user-select: text; }
+button, select, a, label { touch-action: manipulation; }

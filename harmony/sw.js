@@ -1,5 +1,5 @@
 // Harmony Pad service worker: 自ファイルを precache し、ネットワーク優先・失敗時キャッシュ
-const CACHE = 'harmony-pad-v2';
+const CACHE = 'harmony-pad-v3';
 const FILES = ['./', './index.html', './style.css', './app.js', './theory.js', './synth.js',
   './manifest.json', './icon-192.png', './icon-512.png'];
 
